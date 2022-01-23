@@ -1,0 +1,13 @@
+plugins {
+    id 'java-gradle-plugin'
+}
+
+gradlePlugin {
+    // Define the plugin
+    plugins {
+        fletchingtable {
+            id = 'shcm.shsupercm.fabric.fletchingtable'
+            implementationClass = 'shcm.shsupercm.fabric.fletchingtable.FletchingTablePlugin'
+        }
+    }
+}
