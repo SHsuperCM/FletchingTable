@@ -7,7 +7,7 @@ gradlePlugin {
     plugins {
         fletchingtable {
             id = 'shcm.shsupercm.fabric.fletchingtable'
-            implementationClass = 'shcm.shsupercm.fabric.fletchingtable.FletchingTablePlugin'
+            implementationClass = 'shcm.shsupercm.fabric.fletchingtable.FTGradlePlugin'
         }
     }
 }
