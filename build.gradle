@@ -1,6 +1,15 @@
 plugins {
     id 'java-gradle-plugin'
+    id 'com.gradle.plugin-publish' version "0.20.0"
+    id 'maven-publish'
 }
+
+repositories {
+    mavenCentral()
+}
+
+version = '1.0'
+group = 'io.shcm.shsupercm.fabric'
 
 gradlePlugin {
     // Define the plugin
@@ -12,14 +21,33 @@ gradlePlugin {
     }
 }
 
-repositories {
-    mavenCentral()
-}
-
 dependencies {
     implementation group: 'com.google.code.gson', name: 'gson', version: '2.8.9'
 }
 
 jar {
     from sourceSets.main.java.getSrcDirs()
+}
+
+pluginBundle {
+    website = 'https://github.com/SHsuperCM/FletchingTable'
+    vcsUrl = 'https://github.com/SHsuperCM/FletchingTable'
+
+    description = 'Additions and automations to fabric-loom'
+
+    plugins {
+        fletchingtable {
+            displayName = "Fletching Table"
+            tags = ['fabric', 'fabricmc', 'annotation processor']
+        }
+    }
+}
+
+publishing {
+    repositories {
+        maven {
+            name = 'localPluginRepository'
+            url = './local-plugin-repository'
+        }
+    }
 }
