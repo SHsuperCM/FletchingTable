@@ -3,10 +3,26 @@
  */
 package shcm.shsupercm.fabric.fletchingtable;
 
+import com.google.gson.*;
+import com.google.gson.stream.JsonWriter;
 import org.gradle.api.Project;
 import org.gradle.api.Plugin;
+import org.gradle.api.Task;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.plugins.JavaPlugin;
+import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.tasks.SourceSet;
+
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
 
 public class FTGradlePlugin implements Plugin<Project> {
     @Override
@@ -19,5 +35,70 @@ public class FTGradlePlugin implements Plugin<Project> {
         FileCollection thisJar = project.files(getClass().getProtectionDomain().getCodeSource().getLocation());
         project.getDependencies().add(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME, thisJar);
         project.getDependencies().add(JavaPlugin.ANNOTATION_PROCESSOR_CONFIGURATION_NAME, thisJar);
+
+        for (Task classes : project.getTasksByName("classes", false))
+            classes.doLast("entrypoints", this::entrypoints);
+    }
+
+    private void entrypoints(Task task) {
+        for (SourceSet sourceSet : task.getProject().getExtensions().getByType(JavaPluginExtension.class).getSourceSets()) {
+            File jsonFile = new File(sourceSet.getOutput().getResourcesDir(), "fabric.mod.json");
+            if (!jsonFile.exists())
+                continue;
+
+            for (File generatedSourcesDir : sourceSet.getOutput().getGeneratedSourcesDirs()) {
+                File entrypointsFile = new File(generatedSourcesDir, "fletchingtable/entrypoints.txt");
+                if (!entrypointsFile.exists())
+                    continue;
+
+                final Map<String, Set<String>> entrypoints = new HashMap<>();
+
+                try {
+                    //todo load current json entrypoints
+                    JsonObject modJson = JsonParser.parseReader(new FileReader(jsonFile)).getAsJsonObject();
+
+                    JsonObject jEntrypoints = modJson.getAsJsonObject("entrypoints");
+                    if (jEntrypoints == null)
+                        jEntrypoints = new JsonObject();
+
+                    for (Map.Entry<String, JsonElement> entry : jEntrypoints.entrySet()) {
+                        Set<String> ep = entrypoints.computeIfAbsent(entry.getKey(), s -> new LinkedHashSet<>());
+                        for (JsonElement element : entry.getValue().getAsJsonArray())
+                            ep.add(element.getAsString());
+                    }
+
+                    Files.lines(entrypointsFile.toPath(), StandardCharsets.UTF_8)
+                            .forEachOrdered(line -> {
+                                if (!line.isEmpty()) {
+                                    int i = line.indexOf(' ');
+                                    entrypoints.computeIfAbsent(line.substring(i + 1), s -> new LinkedHashSet<>()).add(line.substring(0, i));
+                                }
+                            });
+
+                    for (Map.Entry<String, Set<String>> entry : entrypoints.entrySet()) {
+                        JsonArray ep = new JsonArray();
+
+                        for (String s : entry.getValue())
+                            ep.add(s);
+
+                        jEntrypoints.add(entry.getKey(), ep);
+                    }
+
+                    if (jEntrypoints.size() == 0)
+                        modJson.remove("entrypoints");
+                    else
+                        modJson.add("entrypoints", jEntrypoints);
+
+                    Gson gson = new Gson();
+                    try (JsonWriter writer = gson.newJsonWriter(new FileWriter(jsonFile))) {
+                        writer.setIndent("    ");
+
+                        gson.toJson(modJson, writer);
+                    }
+                } catch (IOException e) {
+                    task.getProject().getLogger().debug("Errored while inserting entrypoints.", e);
+                }
+            }
+        }
     }
 }
