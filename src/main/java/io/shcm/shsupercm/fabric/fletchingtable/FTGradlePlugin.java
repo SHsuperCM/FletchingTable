@@ -41,64 +41,65 @@ public class FTGradlePlugin implements Plugin<Project> {
     }
 
     private void entrypoints(Task task) {
-        for (SourceSet sourceSet : task.getProject().getExtensions().getByType(JavaPluginExtension.class).getSourceSets()) {
-            File jsonFile = new File(sourceSet.getOutput().getResourcesDir(), "fabric.mod.json");
-            if (!jsonFile.exists())
-                continue;
-
-            for (File generatedSourcesDir : sourceSet.getOutput().getGeneratedSourcesDirs()) {
-                File entrypointsFile = new File(generatedSourcesDir, "fletchingtable/entrypoints.txt");
-                if (!entrypointsFile.exists())
+        for (SourceSet sourceSet : task.getProject().getExtensions().getByType(JavaPluginExtension.class).getSourceSets())
+            for (File resourcesDir : sourceSet.getResources().getSrcDirs()) {
+                File jsonFile = new File(resourcesDir, "fabric.mod.json");
+                if (!jsonFile.exists())
                     continue;
 
-                final Map<String, Set<String>> entrypoints = new HashMap<>();
+                for (File generatedSourcesDir : sourceSet.getOutput().getGeneratedSourcesDirs()) {
+                    File entrypointsFile = new File(generatedSourcesDir, "fletchingtable/entrypoints.txt");
+                    if (!entrypointsFile.exists())
+                        continue;
 
-                try {
-                    //todo load current json entrypoints
-                    JsonObject modJson = JsonParser.parseReader(new FileReader(jsonFile)).getAsJsonObject();
+                    final Map<String, Set<String>> entrypoints = new HashMap<>();
 
-                    JsonObject jEntrypoints = modJson.getAsJsonObject("entrypoints");
-                    if (jEntrypoints == null)
-                        jEntrypoints = new JsonObject();
+                    try {
+                        JsonObject modJson = JsonParser.parseReader(new FileReader(jsonFile)).getAsJsonObject();
 
-                    for (Map.Entry<String, JsonElement> entry : jEntrypoints.entrySet()) {
-                        Set<String> ep = entrypoints.computeIfAbsent(entry.getKey(), s -> new LinkedHashSet<>());
-                        for (JsonElement element : entry.getValue().getAsJsonArray())
-                            ep.add(element.getAsString());
+                        JsonObject jEntrypoints = modJson.getAsJsonObject("entrypoints");
+                        if (jEntrypoints == null)
+                            jEntrypoints = new JsonObject();
+
+                        for (Map.Entry<String, JsonElement> entry : jEntrypoints.entrySet()) {
+                            Set<String> ep = entrypoints.computeIfAbsent(entry.getKey(), s -> new LinkedHashSet<>());
+                            for (JsonElement element : entry.getValue().getAsJsonArray())
+                                ep.add(element.getAsString());
+                        }
+
+                        Files.lines(entrypointsFile.toPath(), StandardCharsets.UTF_8)
+                                .forEachOrdered(line -> {
+                                    if (!line.isEmpty()) {
+                                        int i = line.indexOf(' ');
+                                        entrypoints.computeIfAbsent(line.substring(i + 1), s -> new LinkedHashSet<>()).add(line.substring(0, i));
+                                    }
+                                });
+
+                        for (Map.Entry<String, Set<String>> entry : entrypoints.entrySet()) {
+                            JsonArray ep = new JsonArray();
+
+                            for (String s : entry.getValue())
+                                ep.add(s);
+
+                            jEntrypoints.add(entry.getKey(), ep);
+                        }
+
+                        modJson = JsonParser.parseReader(new FileReader(jsonFile = new File(sourceSet.getOutput().getResourcesDir(), "fabric.mod.json"))).getAsJsonObject();
+
+                        if (jEntrypoints.size() == 0)
+                            modJson.remove("entrypoints");
+                        else
+                            modJson.add("entrypoints", jEntrypoints);
+
+                        Gson gson = new Gson();
+                        try (JsonWriter writer = gson.newJsonWriter(new FileWriter(jsonFile))) {
+                            writer.setIndent("    ");
+                            gson.toJson(modJson, writer);
+                        }
+                    } catch (IOException e) {
+                        task.getProject().getLogger().debug("Errored while inserting entrypoints.", e);
                     }
-
-                    Files.lines(entrypointsFile.toPath(), StandardCharsets.UTF_8)
-                            .forEachOrdered(line -> {
-                                if (!line.isEmpty()) {
-                                    int i = line.indexOf(' ');
-                                    entrypoints.computeIfAbsent(line.substring(i + 1), s -> new LinkedHashSet<>()).add(line.substring(0, i));
-                                }
-                            });
-
-                    for (Map.Entry<String, Set<String>> entry : entrypoints.entrySet()) {
-                        JsonArray ep = new JsonArray();
-
-                        for (String s : entry.getValue())
-                            ep.add(s);
-
-                        jEntrypoints.add(entry.getKey(), ep);
-                    }
-
-                    if (jEntrypoints.size() == 0)
-                        modJson.remove("entrypoints");
-                    else
-                        modJson.add("entrypoints", jEntrypoints);
-
-                    Gson gson = new Gson();
-                    try (JsonWriter writer = gson.newJsonWriter(new FileWriter(jsonFile))) {
-                        writer.setIndent("    ");
-
-                        gson.toJson(modJson, writer);
-                    }
-                } catch (IOException e) {
-                    task.getProject().getLogger().debug("Errored while inserting entrypoints.", e);
                 }
             }
-        }
     }
 }
