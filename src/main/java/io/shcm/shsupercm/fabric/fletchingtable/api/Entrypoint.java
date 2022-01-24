@@ -1,4 +1,4 @@
-package shcm.shsupercm.fabric.fletchingtable.api;
+package io.shcm.shsupercm.fabric.fletchingtable.api;
 
 import java.lang.annotation.*;
 

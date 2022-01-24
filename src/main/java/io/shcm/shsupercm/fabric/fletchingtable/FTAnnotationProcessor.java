@@ -1,6 +1,6 @@
-package shcm.shsupercm.fabric.fletchingtable;
+package io.shcm.shsupercm.fabric.fletchingtable;
 
-import shcm.shsupercm.fabric.fletchingtable.api.Entrypoint;
+import io.shcm.shsupercm.fabric.fletchingtable.api.Entrypoint;
 
 import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
@@ -14,7 +14,7 @@ import java.io.Writer;
 import java.util.Set;
 
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
-@SupportedAnnotationTypes({ "shcm.shsupercm.fabric.fletchingtable.api.Entrypoint.Repeated", "shcm.shsupercm.fabric.fletchingtable.api.Entrypoint" })
+@SupportedAnnotationTypes({ "io.shcm.shsupercm.fabric.fletchingtable.api.Entrypoint.Repeated", "io.shcm.shsupercm.fabric.fletchingtable.api.Entrypoint" })
 public class FTAnnotationProcessor extends AbstractProcessor {
     private Writer writer;
 
