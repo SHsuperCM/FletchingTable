@@ -5,33 +5,33 @@ package io.shcm.shsupercm.fabric.fletchingtable;
 
 import com.google.gson.*;
 import com.google.gson.stream.JsonWriter;
-import org.gradle.api.Project;
 import org.gradle.api.Plugin;
+import org.gradle.api.Project;
 import org.gradle.api.Task;
+import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSet;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
+import java.nio.file.StandardCopyOption;
+import java.util.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 public class FTGradlePlugin implements Plugin<Project> {
     @Override
     public void apply(Project project) {
         project.afterEvaluate(this::afterEvaluate);
+
+        project.getDependencies().getExtensions().create("includedJars", IncludedJarsExtension.class, project);
     }
 
     private void afterEvaluate(Project project) {
-        // Add plugin to project's compileOnly
         FileCollection thisJar = project.files(getClass().getProtectionDomain().getCodeSource().getLocation());
         project.getDependencies().add(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME, thisJar);
         project.getDependencies().add(JavaPlugin.ANNOTATION_PROCESSOR_CONFIGURATION_NAME, thisJar);
@@ -101,5 +101,57 @@ public class FTGradlePlugin implements Plugin<Project> {
                     }
                 }
             }
+    }
+
+    public static abstract class IncludedJarsExtension {
+        private final File includedJarsCache;
+        private final DependencyHandler dependencies;
+        private final Configuration configuration;
+
+        public IncludedJarsExtension(Project project) {
+            includedJarsCache = new File(project.getProjectDir(), ".gradle/fletchingtable/includedJarsCache");
+
+            project.getRepositories().flatDir(repository -> {
+                repository.dirs(includedJarsCache);
+                repository.content(content ->
+                        content.includeGroup("includedJars")
+                );
+            });
+
+            this.dependencies = project.getDependencies();
+            configuration = project.getConfigurations().create("includedJarsInternalConfiguration");
+            configuration.setTransitive(false);
+        }
+
+        public void from(String dependencyString) {
+            dependencies.add("includedJarsInternalConfiguration", dependencyString);
+        }
+
+        public void extractAll() {
+            if (includedJarsCache.exists()) {
+                for (File file : Objects.requireNonNull(includedJarsCache.listFiles()))
+                    if (file.isFile())
+                        file.delete();
+            } else
+                includedJarsCache.mkdirs();
+
+            for (File parentJarFile : configuration.resolve())
+                try {
+                    try (ZipFile parentJarZip = new ZipFile(parentJarFile)) {
+                        ZipEntry modJsonEntry = parentJarZip.getEntry("fabric.mod.json");
+                        if (modJsonEntry != null) {
+                            JsonObject modJson = JsonParser.parseReader(new InputStreamReader(parentJarZip.getInputStream(modJsonEntry), StandardCharsets.UTF_8)).getAsJsonObject();
+                            JsonArray jars = modJson.getAsJsonArray("jars");
+                            if (jars != null)
+                                for (JsonElement jar : jars) {
+                                    String jarPath = jar.getAsJsonObject().get("file").getAsString();
+                                    Files.copy(parentJarZip.getInputStream(parentJarZip.getEntry(jarPath)), includedJarsCache.toPath().resolve(jarPath.substring(jarPath.lastIndexOf('/') + 1)), StandardCopyOption.REPLACE_EXISTING);
+                                }
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+        }
     }
 }
