@@ -13,6 +13,7 @@ import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.SourceSet;
 
 import java.io.*;
@@ -24,20 +25,30 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 public class FTGradlePlugin implements Plugin<Project> {
+    private FletchingTableExtension fletchingTableExtension;
+
     @Override
     public void apply(Project project) {
+        fletchingTableExtension = project.getExtensions().create("fletchingTable", FletchingTableExtension.class);
+
         project.afterEvaluate(this::afterEvaluate);
 
-        project.getDependencies().getExtensions().create("includedJars", IncludedJarsExtension.class, project);
+        project.getDependencies().getExtensions().create("includedJars", IncludedJarsExtension.class, project, fletchingTableExtension);
     }
 
     private void afterEvaluate(Project project) {
         FileCollection thisJar = project.files(getClass().getProtectionDomain().getCodeSource().getLocation());
         project.getDependencies().add(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME, thisJar);
-        project.getDependencies().add(JavaPlugin.ANNOTATION_PROCESSOR_CONFIGURATION_NAME, thisJar);
 
-        for (Task classes : project.getTasksByName("classes", false))
-            classes.doLast("entrypoints", this::entrypoints);
+        System.out.println("ap: " + fletchingTableExtension.getEnableAnnotationProcessor().get());
+        if (fletchingTableExtension.getEnableAnnotationProcessor().get()) {
+            project.getDependencies().add(JavaPlugin.ANNOTATION_PROCESSOR_CONFIGURATION_NAME, thisJar);
+
+            System.out.println("entrypoints: " + fletchingTableExtension.getEnableEntrypoints().get());
+            if (fletchingTableExtension.getEnableEntrypoints().get())
+                for (Task classes : project.getTasksByName("classes", false))
+                    classes.doLast("entrypoints", this::entrypoints);
+        }
     }
 
     private void entrypoints(Task task) {
@@ -104,11 +115,13 @@ public class FTGradlePlugin implements Plugin<Project> {
     }
 
     public static abstract class IncludedJarsExtension {
+        private final FletchingTableExtension fletchingTableExtension;
         private final File includedJarsCache;
         private final DependencyHandler dependencies;
         private final Configuration configuration;
 
-        public IncludedJarsExtension(Project project) {
+        public IncludedJarsExtension(Project project, FletchingTableExtension fletchingTableExtension) {
+            this.fletchingTableExtension = fletchingTableExtension;
             includedJarsCache = new File(project.getProjectDir(), ".gradle/fletchingtable/includedJarsCache");
 
             project.getRepositories().flatDir(repository -> {
@@ -119,12 +132,12 @@ public class FTGradlePlugin implements Plugin<Project> {
             });
 
             this.dependencies = project.getDependencies();
-            configuration = project.getConfigurations().create("includedJarsInternalConfiguration");
-            configuration.setTransitive(false);
+            this.configuration = project.getConfigurations().create("includedJarsInternalConfiguration");
+            this.configuration.setTransitive(false);
         }
 
         public void from(String dependencyString) {
-            dependencies.add("includedJarsInternalConfiguration", dependencyString);
+            this.dependencies.add("includedJarsInternalConfiguration", dependencyString);
         }
 
         public void extractAll() {
@@ -135,23 +148,39 @@ public class FTGradlePlugin implements Plugin<Project> {
             } else
                 includedJarsCache.mkdirs();
 
-            for (File parentJarFile : configuration.resolve())
-                try {
-                    try (ZipFile parentJarZip = new ZipFile(parentJarFile)) {
-                        ZipEntry modJsonEntry = parentJarZip.getEntry("fabric.mod.json");
-                        if (modJsonEntry != null) {
-                            JsonObject modJson = JsonParser.parseReader(new InputStreamReader(parentJarZip.getInputStream(modJsonEntry), StandardCharsets.UTF_8)).getAsJsonObject();
-                            JsonArray jars = modJson.getAsJsonArray("jars");
-                            if (jars != null)
-                                for (JsonElement jar : jars) {
-                                    String jarPath = jar.getAsJsonObject().get("file").getAsString();
-                                    Files.copy(parentJarZip.getInputStream(parentJarZip.getEntry(jarPath)), includedJarsCache.toPath().resolve(jarPath.substring(jarPath.lastIndexOf('/') + 1)), StandardCopyOption.REPLACE_EXISTING);
-                                }
+            System.out.println("includedJars: " + fletchingTableExtension.getEnableIncludedJars().get());
+            if (fletchingTableExtension.getEnableIncludedJars().get())
+                for (File parentJarFile : this.configuration.resolve())
+                    try {
+                        try (ZipFile parentJarZip = new ZipFile(parentJarFile)) {
+                            ZipEntry modJsonEntry = parentJarZip.getEntry("fabric.mod.json");
+                            if (modJsonEntry != null) {
+                                JsonObject modJson = JsonParser.parseReader(new InputStreamReader(parentJarZip.getInputStream(modJsonEntry), StandardCharsets.UTF_8)).getAsJsonObject();
+                                JsonArray jars = modJson.getAsJsonArray("jars");
+                                if (jars != null)
+                                    for (JsonElement jar : jars) {
+                                        String jarPath = jar.getAsJsonObject().get("file").getAsString();
+                                        Files.copy(parentJarZip.getInputStream(parentJarZip.getEntry(jarPath)), includedJarsCache.toPath().resolve(jarPath.substring(jarPath.lastIndexOf('/') + 1)), StandardCopyOption.REPLACE_EXISTING);
+                                    }
+                            }
                         }
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+        }
+    }
+
+    public static abstract class FletchingTableExtension {
+        public abstract Property<Boolean> getEnableEntrypoints();
+        public abstract Property<Boolean> getEnableIncludedJars();
+
+        public abstract Property<Boolean> getEnableAnnotationProcessor();
+
+        public FletchingTableExtension() {
+            getEnableEntrypoints().convention(true);
+            getEnableIncludedJars().convention(true);
+
+            getEnableAnnotationProcessor().convention(true);
         }
     }
 }
