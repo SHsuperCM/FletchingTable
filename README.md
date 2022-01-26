@@ -1,6 +1,8 @@
 # Fletching Table
 Additions and automations for fabric-loom
 
+## This project is still experimental, use at your own risk or wait a little so I can polish it :)
+
 ## Features
 ### Entrypoints
 Automatically registers entrypoints into the project's mod json.
@@ -49,3 +51,14 @@ plugins {
 
 ## Planned
  - Automatic Mixin registry
+
+## About Fletching Table
+I originally suggested automatic entrypoints to loom but it was denied as it was out of scope. I was told it would make a good library and while I still believe Fabric should have automatic entrypoints by default, I agree that it needs to be a thing regardless.
+
+Someone then told me on the Fabric discord that [Fudge](https://github.com/natanfudge) already made [a library for entrypoint annotations](https://github.com/natanfudge/AutoFabric) but it turned out to be buggy and hard to fix(why kotlin..).
+Still, Fudge did a good amount of work that in the end helped me set up Fletching Table so thanks for that.
+
+I also had some more things I wanted out of loom so I figured I might as well make my own plugin.
+
+Why "Fletching Table"?
+I- Idk.. just wanted something Loom-adjacent and didnt want to call it Smithing Table :p
