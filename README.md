@@ -19,11 +19,14 @@ Then, use extracted jars in other configurations by setting the group to `includ
 
 As an example, here's how to add Pride Lib inside Lambdynamic Lights from the modrinth maven to the modCompileOnly configuration:
 ```groovy
-includedJars {
-    from "maven.modrinth:lambdynamiclights:2.1.0+1.17"
-    extractAll()
+dependencies {
+    ...
+    includedJars {
+        from "maven.modrinth:lambdynamiclights:2.1.0+1.17"
+        extractAll()
+    }
+    modCompileOnly "includedJars:pridelib-1.1.0+1.17"
 }
-modCompileOnly "includedJars:pridelib-1.1.0+1.17"
 ```
 
 ### Settings
