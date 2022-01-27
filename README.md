@@ -1,5 +1,5 @@
 # Fletching Table
-Additions and automations for fabric-loom
+Additions and automations for [fabric-loom](https://github.com/FabricMC/fabric-loom)
 
 ## This project is still experimental, use at your own risk or wait a little so I can polish it :)
 
@@ -15,12 +15,12 @@ Exposes jars that were included in dependencies with Loom's `include` configurat
 
 To use, first add an `includedJars` closure in your dependencies. 
 Add parent dependencies to extract from using the `from` configuration, at the end call `extractAll()`.
-Then, use extracted jars in other configurations by setting the group to `includedJars` and the name to the name of the extracted jar.
+Then, use extracted jars in other configurations by setting the group to `includedJars` and the name to the name of the extracted jar(without the `.jar` extension).
 
 As an example, here's how to add Pride Lib inside Lambdynamic Lights from the modrinth maven to the modCompileOnly configuration:
 ```groovy
 dependencies {
-    ...
+    ..
     includedJars {
         from "maven.modrinth:lambdynamiclights:2.1.0+1.17"
         extractAll()
@@ -45,10 +45,10 @@ fletchingTable {
 
 ## Setup
 Add the plugin by applying it **after loom**.
-```
+```patch
 plugins {
-  id 'fabric-loom' ...
-  id "io.shcm.shsupercm.fabric.fletchingtable" version "1.1"
+    id 'fabric-loom' ...
++   id "io.shcm.shsupercm.fabric.fletchingtable" version "1.1"
 }
 ```
 
