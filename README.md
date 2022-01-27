@@ -54,6 +54,7 @@ plugins {
 
 ## Planned
  - Automatic Mixin registry
+ - Making Yggdrasil shut up either with a login or by muting the exception
 
 ## About Fletching Table
 I originally suggested automatic entrypoints to loom but it was denied as it was out of scope. I was told it would make a good library and while I still believe Fabric should have automatic entrypoints by default, I agree that it needs to be a thing regardless.
