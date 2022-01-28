@@ -40,14 +40,39 @@ public class FTGradlePlugin implements Plugin<Project> {
         FileCollection thisJar = project.files(getClass().getProtectionDomain().getCodeSource().getLocation());
         project.getDependencies().add(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME, thisJar);
 
-        System.out.println("ap: " + fletchingTableExtension.getEnableAnnotationProcessor().get());
         if (fletchingTableExtension.getEnableAnnotationProcessor().get()) {
             project.getDependencies().add(JavaPlugin.ANNOTATION_PROCESSOR_CONFIGURATION_NAME, thisJar);
 
-            System.out.println("entrypoints: " + fletchingTableExtension.getEnableEntrypoints().get());
+            for (SourceSet sourceSet : project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets())
+                for (File resourcesDir : sourceSet.getResources().getSrcDirs()) {
+                    File jsonFile = new File(resourcesDir, "fabric.mod.json");
+                    if (!jsonFile.exists())
+                        continue;
+
+                    for (File generatedSourcesDir : sourceSet.getOutput().getGeneratedSourcesDirs()) {
+                        Properties settings = new Properties();
+                        settings.put("entrypoints", fletchingTableExtension.getEnableEntrypoints().get().toString());
+                        settings.put("mixins", fletchingTableExtension.getEnableMixins().get().toString());
+                        settings.put("mixins-default", fletchingTableExtension.getDefaultMixinEnvironment().get());
+                        File file = new File(generatedSourcesDir, "fletchingtable/ap.properties");
+                        file.getParentFile().mkdirs();
+                        file.delete();
+                        try (FileWriter fw = new FileWriter(file)) {
+                            settings.store(fw, null);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+
+
             if (fletchingTableExtension.getEnableEntrypoints().get())
                 for (Task classes : project.getTasksByName("classes", false))
-                    classes.doLast("entrypoints", this::entrypoints);
+                    classes.doLast("ftEntrypoints", this::entrypoints);
+
+            if (fletchingTableExtension.getEnableMixins().get())
+                for (Task classes : project.getTasksByName("classes", false))
+                    classes.doLast("ftMixins", this::mixins);
         }
     }
 
@@ -114,6 +139,28 @@ public class FTGradlePlugin implements Plugin<Project> {
             }
     }
 
+    private void mixins(Task task) {
+        for (SourceSet sourceSet : task.getProject().getExtensions().getByType(JavaPluginExtension.class).getSourceSets())
+            for (File resourcesDir : sourceSet.getResources().getSrcDirs()) {
+                File jsonFile = new File(resourcesDir, "fabric.mod.json");
+                if (!jsonFile.exists())
+                    continue;
+
+                for (File generatedSourcesDir : sourceSet.getOutput().getGeneratedSourcesDirs()) {
+                    File mixinsFile = new File(generatedSourcesDir, "fletchingtable/mixins.txt");
+                    if (!mixinsFile.exists())
+                        continue;
+
+                    try {
+                        JsonObject modJson = JsonParser.parseReader(new FileReader(jsonFile)).getAsJsonObject();
+
+                    } catch (IOException e) {
+                        task.getProject().getLogger().debug("Errored while inserting entrypoints.", e);
+                    }
+                }
+            }
+    }
+
     public static abstract class IncludedJarsExtension {
         private final FletchingTableExtension fletchingTableExtension;
         private final File includedJarsCache;
@@ -148,7 +195,6 @@ public class FTGradlePlugin implements Plugin<Project> {
             } else
                 includedJarsCache.mkdirs();
 
-            System.out.println("includedJars: " + fletchingTableExtension.getEnableIncludedJars().get());
             if (fletchingTableExtension.getEnableIncludedJars().get())
                 for (File parentJarFile : this.configuration.resolve())
                     try {
@@ -172,15 +218,21 @@ public class FTGradlePlugin implements Plugin<Project> {
 
     public static abstract class FletchingTableExtension {
         public abstract Property<Boolean> getEnableEntrypoints();
+        public abstract Property<Boolean> getEnableMixins();
         public abstract Property<Boolean> getEnableIncludedJars();
-
+		
         public abstract Property<Boolean> getEnableAnnotationProcessor();
+
+        public abstract Property<String> getDefaultMixinEnvironment();
 
         public FletchingTableExtension() {
             getEnableEntrypoints().convention(true);
+            getEnableMixins().convention(true);
             getEnableIncludedJars().convention(true);
 
             getEnableAnnotationProcessor().convention(true);
+			
+            getDefaultMixinEnvironment().convention("none");
         }
     }
 }
