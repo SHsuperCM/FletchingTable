@@ -5,6 +5,7 @@ package io.shcm.shsupercm.fabric.fletchingtable;
 
 import com.google.gson.*;
 import com.google.gson.stream.JsonWriter;
+import io.shcm.shsupercm.fabric.fletchingtable.api.MixinEnvironment;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
@@ -91,7 +92,10 @@ public class FTGradlePlugin implements Plugin<Project> {
                     final Map<String, Set<String>> entrypoints = new HashMap<>();
 
                     try {
-                        JsonObject modJson = JsonParser.parseReader(new FileReader(jsonFile)).getAsJsonObject();
+                        JsonObject modJson;
+                        try (FileReader fileReader = new FileReader(jsonFile)) {
+                            modJson = JsonParser.parseReader(fileReader).getAsJsonObject();
+                        }
 
                         JsonObject jEntrypoints = modJson.getAsJsonObject("entrypoints");
                         if (jEntrypoints == null)
@@ -120,7 +124,9 @@ public class FTGradlePlugin implements Plugin<Project> {
                             jEntrypoints.add(entry.getKey(), ep);
                         }
 
-                        modJson = JsonParser.parseReader(new FileReader(jsonFile = new File(sourceSet.getOutput().getResourcesDir(), "fabric.mod.json"))).getAsJsonObject();
+                        try (FileReader fileReader = new FileReader(jsonFile = new File(sourceSet.getOutput().getResourcesDir(), "fabric.mod.json"))) {
+                            modJson = JsonParser.parseReader(fileReader).getAsJsonObject();
+                        }
 
                         if (jEntrypoints.size() == 0)
                             modJson.remove("entrypoints");
@@ -152,10 +158,90 @@ public class FTGradlePlugin implements Plugin<Project> {
                         continue;
 
                     try {
-                        JsonObject modJson = JsonParser.parseReader(new FileReader(jsonFile)).getAsJsonObject();
+                        final Map<String, MixinEnvironment.Env> mixins = new HashMap<>();
 
-                    } catch (IOException e) {
-                        task.getProject().getLogger().debug("Errored while inserting entrypoints.", e);
+                        Files.lines(mixinsFile.toPath(), StandardCharsets.UTF_8)
+                                .forEachOrdered(line -> {
+                                    if (!line.isEmpty()) {
+                                        int i = line.indexOf(' ');
+                                        mixins.put(line.substring(0, i), MixinEnvironment.Env.valueOf(line.substring(i + 1).toUpperCase(Locale.ENGLISH)));
+                                    }
+                                });
+
+                        JsonObject json;
+                        try (FileReader fileReader = new FileReader(jsonFile)) {
+                            json = JsonParser.parseReader(fileReader).getAsJsonObject();
+                        }
+
+                        MixinEnvironment.Env modEnvironment = MixinEnvironment.Env.MIXINS;
+                        JsonElement jEnvironment = json.get("environment");
+                        if (jEnvironment != null)
+                            switch (jEnvironment.getAsString()) {
+                                case "client":
+                                    modEnvironment = MixinEnvironment.Env.CLIENT; break;
+                                case "server":
+                                    modEnvironment = MixinEnvironment.Env.SERVER; break;
+                            }
+
+                        JsonArray jMixinConfigs = json.getAsJsonArray("mixins");
+                        if (jMixinConfigs == null || jMixinConfigs.isEmpty())
+                            continue; //todo generate new mixin config
+
+                        for (JsonElement jMixinConfig : jMixinConfigs) {
+                            String configName;
+                            MixinEnvironment.Env environment = modEnvironment;
+                            if (jMixinConfig.isJsonObject()) {
+                                configName = jMixinConfig.getAsJsonObject().get("config").getAsString();
+
+                                if (environment == MixinEnvironment.Env.MIXINS) {
+                                    jEnvironment = jMixinConfig.getAsJsonObject().get("environment");
+                                    if (jEnvironment != null)
+                                        switch (jEnvironment.getAsString()) {
+                                            case "client":
+                                                environment = MixinEnvironment.Env.CLIENT;
+                                                break;
+                                            case "server":
+                                                environment = MixinEnvironment.Env.SERVER;
+                                                break;
+                                        }
+                                }
+                            } else
+                                configName = jMixinConfig.getAsString();
+
+                            try (FileReader fileReader = new FileReader(jsonFile = new File(sourceSet.getOutput().getResourcesDir(), configName))) {
+                                json = JsonParser.parseReader(fileReader).getAsJsonObject();
+                            }
+
+                            JsonElement jMixinRoot = json.get("package");
+                            if (jMixinRoot != null) {
+                                JsonArray jMixins = new JsonArray(), jClient = new JsonArray(), jServer = new JsonArray();
+
+                                String mixinRoot = jMixinRoot.getAsString();
+
+                                for (Map.Entry<String, MixinEnvironment.Env> entry : mixins.entrySet())
+                                    if (entry.getKey().startsWith(mixinRoot)) {
+                                        String relMixin = entry.getKey().substring(mixinRoot.length() + 1);
+                                        switch (environment == MixinEnvironment.Env.MIXINS ? entry.getValue() : environment) {
+                                            case MIXINS: jMixins.add(relMixin); break;
+                                            case CLIENT: jClient.add(relMixin); break;
+                                            case SERVER: jServer.add(relMixin); break;
+                                        }
+                                    }
+
+                                json.add("mixins", jMixins.isEmpty() ? null : jMixins);
+                                json.add("client", jClient.isEmpty() ? null : jClient);
+                                json.add("server", jServer.isEmpty() ? null : jServer);
+
+                                Gson gson = new Gson();
+                                try (JsonWriter writer = gson.newJsonWriter(new FileWriter(jsonFile))) {
+                                    writer.setIndent("    ");
+                                    gson.toJson(json, writer);
+                                }
+                            }
+                        }
+
+                    } catch (Exception e) {
+                        task.getProject().getLogger().debug("Errored while inserting mixins.", e);
                     }
                 }
             }
