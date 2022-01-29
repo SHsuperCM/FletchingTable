@@ -53,7 +53,8 @@ plugins {
 ```
 
 ## Planned
- - Automatic Mixin registry
+ - Automatic Mixin registry (working on the dev commits, v1.2)
+ - Automatic interface injections registry
  - Making Yggdrasil shut up either with a login or by muting the exception
 
 ## About Fletching Table
