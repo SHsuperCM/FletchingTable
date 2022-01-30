@@ -50,20 +50,10 @@ public class FTGradlePlugin implements Plugin<Project> {
                     if (!jsonFile.exists())
                         continue;
 
-                    for (File generatedSourcesDir : sourceSet.getOutput().getGeneratedSourcesDirs()) {
-                        Properties settings = new Properties();
-                        settings.put("entrypoints", fletchingTableExtension.getEnableEntrypoints().get().toString());
-                        settings.put("mixins", fletchingTableExtension.getEnableMixins().get().toString());
-                        settings.put("mixins-default", fletchingTableExtension.getDefaultMixinEnvironment().get());
-                        File file = new File(generatedSourcesDir, "fletchingtable/ap.properties");
-                        file.getParentFile().mkdirs();
-                        file.delete();
-                        try (FileWriter fw = new FileWriter(file)) {
-                            settings.store(fw, null);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }
+                    for (File generatedSourcesDir : sourceSet.getOutput().getGeneratedSourcesDirs())
+                        if (fletchingTableExtension.writeAPSettings(new File(generatedSourcesDir, "fletchingtable/ap.properties")))
+                            for (Task classes : project.getTasksByName("compileJava", false))
+                                classes.getOutputs().upToDateWhen(task -> false);
                 }
 
 
@@ -319,6 +309,31 @@ public class FTGradlePlugin implements Plugin<Project> {
             getEnableAnnotationProcessor().convention(true);
 			
             getDefaultMixinEnvironment().convention("none");
+        }
+
+        protected boolean writeAPSettings(File file) {
+            Properties settings = new Properties(), oldSettings = null;
+            file.getParentFile().mkdirs();
+            if (file.exists()) {
+                try (FileReader fr = new FileReader(file)) {
+                    (oldSettings = new Properties()).load(fr);
+                } catch (Exception ignored) {
+                    oldSettings = null;
+                }
+                file.delete();
+            }
+
+            settings.put("entrypoints", getEnableEntrypoints().get().toString());
+            settings.put("mixins", getEnableMixins().get().toString());
+            settings.put("mixins-default", getDefaultMixinEnvironment().get());
+
+            try (FileWriter fw = new FileWriter(file)) {
+                settings.store(fw, null);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            return !settings.equals(oldSettings);
         }
     }
 }
