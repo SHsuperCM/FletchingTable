@@ -54,6 +54,7 @@ plugins {
 
 ## Planned
  - Automatic Mixin registry (working on the dev commits, v1.2)
+ - Kotlin support
  - Automatic interface injections registry
  - Making Yggdrasil shut up either with a login or by muting the exception
 
