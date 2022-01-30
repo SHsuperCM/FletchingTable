@@ -8,6 +8,7 @@ import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic;
 import javax.tools.FileObject;
@@ -16,12 +17,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Writer;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
 public class FTAnnotationProcessor extends AbstractProcessor {
     private Writer writerEntrypoints = null, writerMixins = null;
-    private String defaultMixinEnvironment = null;
+    private String defaultMixinEnvironment, autoMixinClientPrefix, autoMixinServerPrefix;
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -31,7 +33,6 @@ public class FTAnnotationProcessor extends AbstractProcessor {
             try (InputStream is = processingEnv.getFiler().getResource(StandardLocation.SOURCE_OUTPUT, "fletchingtable", "ap.properties").openInputStream()) {
                 settings.load(is);
             }
-            defaultMixinEnvironment = settings.getProperty("mixins-default", "none");
 
             FileObject file;
             if (settings.getProperty("entrypoints", "true").equalsIgnoreCase("true")) {
@@ -43,6 +44,15 @@ public class FTAnnotationProcessor extends AbstractProcessor {
                 file = processingEnv.getFiler().createResource(StandardLocation.SOURCE_OUTPUT, "fletchingtable", "mixins.txt");
                 file.delete();
                 writerMixins = file.openWriter();
+
+                defaultMixinEnvironment = settings.getProperty("mixins-default", "none");
+
+                autoMixinClientPrefix = settings.getProperty("mixins-prefix-client", "null");
+                if (autoMixinClientPrefix.equals("null"))
+                    autoMixinClientPrefix = null;
+                autoMixinServerPrefix = settings.getProperty("mixins-prefix-server", "null");
+                if (autoMixinServerPrefix.equals("null"))
+                    autoMixinServerPrefix = null;
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -89,26 +99,8 @@ public class FTAnnotationProcessor extends AbstractProcessor {
             }
 
             if (writerMixins != null) {
-                for (Element element : roundEnv.getElementsAnnotatedWith(Mixin.class)) {
-                    MixinEnvironment environmentOverride = element.getAnnotation(MixinEnvironment.class);
-                    String environment = environmentOverride == null ? defaultMixinEnvironment : environmentOverride.value().configName;
-
-                    if (environment.equals("auto")) {
-                        environment = "mixins";
-                        for (AnnotationMirror mixinMirror : element.getAnnotationMirrors())
-                            if (mixinMirror.getAnnotationType().toString().equals("org.spongepowered.asm.mixin.Mixin") && mixinMirror.toString().contains("net.minecraft.client")) {
-                                environment = "client";
-                                break;
-                            }
-                    }
-
-                    if (!environment.equals("none"))
-                        writerMixins
-                                .append(element.toString())
-                                .append(" ")
-                                .append(environment)
-                                .append("\n");
-                }
+                for (Element element : roundEnv.getElementsAnnotatedWith(Mixin.class))
+                    processMixin(element);
 
                 if (roundEnv.processingOver()) {
                     writerMixins.close();
@@ -120,6 +112,44 @@ public class FTAnnotationProcessor extends AbstractProcessor {
             e.printStackTrace();
         }
         return true;
+    }
+
+    public void processMixin(Element element) throws IOException {
+        if (!element.getKind().isClass() && !element.getKind().isInterface())
+            processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Got annotated @Mixin on unexpected type " + element.getKind() + "!");
+
+        MixinEnvironment environmentOverride = element.getAnnotation(MixinEnvironment.class);
+        String environment = environmentOverride == null ? defaultMixinEnvironment : environmentOverride.value().configName;
+
+        if (environment.equals("auto")) {
+            environment = "mixins";
+            annotations: for (AnnotationMirror mixinMirror : element.getAnnotationMirrors())
+                if (mixinMirror.getAnnotationType().toString().equals("org.spongepowered.asm.mixin.Mixin")) {
+                    for (ExecutableElement key : mixinMirror.getElementValues().keySet())
+                        if (key.toString().equals("value()") || key.toString().equals("targets()"))
+                            //noinspection unchecked
+                            for (Object targetObj : ((List<Object>) mixinMirror.getElementValues().get(key).getValue())) {
+                                String target = targetObj.toString(); // safe for both Attribute.Class and String
+
+                                if (autoMixinClientPrefix != null && target.startsWith(autoMixinClientPrefix)) {
+                                    environment = "client";
+                                    break annotations;
+                                }
+                                if (autoMixinServerPrefix != null && target.startsWith(autoMixinServerPrefix)) {
+                                    environment = "server";
+                                    break annotations;
+                                }
+                            }
+                    break;
+                }
+        }
+
+        if (!environment.equals("none"))
+            writerMixins
+                    .append(element.toString())
+                    .append(" ")
+                    .append(environment)
+                    .append("\n");
     }
 
     public void processEntrypoint(Element element, String entrypoint) throws IOException {
@@ -135,7 +165,8 @@ public class FTAnnotationProcessor extends AbstractProcessor {
                         .append(element.getSimpleName());
                 break;
             default:
-                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Got annotated @Entrypoint of unexpected type " + element.getKind() + "!");
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Got annotated @Entrypoint on unexpected type " + element.getKind() + "!");
+                return;
         }
         writerEntrypoints
                 .append(" ")

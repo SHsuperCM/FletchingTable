@@ -300,6 +300,8 @@ public class FTGradlePlugin implements Plugin<Project> {
         public abstract Property<Boolean> getEnableAnnotationProcessor();
 
         public abstract Property<String> getDefaultMixinEnvironment();
+        public abstract Property<String> getAutoMixinEnvironmentClientPrefix();
+        public abstract Property<String> getAutoMixinEnvironmentServerPrefix();
 
         public FletchingTableExtension() {
             getEnableEntrypoints().convention(true);
@@ -309,6 +311,8 @@ public class FTGradlePlugin implements Plugin<Project> {
             getEnableAnnotationProcessor().convention(true);
 			
             getDefaultMixinEnvironment().convention("none");
+            getAutoMixinEnvironmentClientPrefix().convention("net.minecraft.client");
+            getAutoMixinEnvironmentServerPrefix().convention("null");
         }
 
         protected boolean writeAPSettings(File file) {
@@ -326,6 +330,8 @@ public class FTGradlePlugin implements Plugin<Project> {
             settings.put("entrypoints", getEnableEntrypoints().get().toString());
             settings.put("mixins", getEnableMixins().get().toString());
             settings.put("mixins-default", getDefaultMixinEnvironment().get());
+            settings.put("mixins-prefix-client", getAutoMixinEnvironmentClientPrefix().get());
+            settings.put("mixins-prefix-server", getAutoMixinEnvironmentServerPrefix().get());
 
             try (FileWriter fw = new FileWriter(file)) {
                 settings.store(fw, null);
