@@ -134,7 +134,7 @@ public class FTGradlePlugin implements Plugin<Project> {
                             modJson.add("entrypoints", jEntrypoints);
 
                         Gson gson = new Gson();
-                        try (JsonWriter writer = gson.newJsonWriter(new FileWriter(jsonFile))) {
+                        try (FileWriter fileWriter = new FileWriter(jsonFile); JsonWriter writer = gson.newJsonWriter(fileWriter)) {
                             writer.setIndent("    ");
                             gson.toJson(modJson, writer);
                         }
@@ -233,7 +233,7 @@ public class FTGradlePlugin implements Plugin<Project> {
                                 json.add("server", jServer.isEmpty() ? null : jServer);
 
                                 Gson gson = new Gson();
-                                try (JsonWriter writer = gson.newJsonWriter(new FileWriter(jsonFile))) {
+                                try (FileWriter fileWriter = new FileWriter(jsonFile); JsonWriter writer = gson.newJsonWriter(fileWriter)) {
                                     writer.setIndent("    ");
                                     gson.toJson(json, writer);
                                 }

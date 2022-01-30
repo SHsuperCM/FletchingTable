@@ -81,7 +81,11 @@ public class FTAnnotationProcessor extends AbstractProcessor {
                     for (Entrypoint entrypoint : element.getAnnotation(Entrypoint.Repeated.class).value())
                         processEntrypoint(element, entrypoint.value());
 
-                writerEntrypoints.flush();
+                if (roundEnv.processingOver()) {
+                    writerEntrypoints.close();
+                    writerEntrypoints = null;
+                } else
+                    writerEntrypoints.flush();
             }
 
             if (writerMixins != null) {
@@ -106,7 +110,11 @@ public class FTAnnotationProcessor extends AbstractProcessor {
                                 .append("\n");
                 }
 
-                writerMixins.flush();
+                if (roundEnv.processingOver()) {
+                    writerMixins.close();
+                    writerMixins = null;
+                } else
+                    writerMixins.flush();
             }
         } catch (Exception e) {
             e.printStackTrace();
