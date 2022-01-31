@@ -10,6 +10,12 @@ Automatically registers entrypoints into the project's mod json.
 Simply annotate a static class, method or field with `@Entrypoint` and specify the desired entrypoint to register to in its value!
 Fletching Table will automatically process it and add it to existing entrypoints in `fabric.mod.json`.
 
+### Mixins
+Automatically registers mixins into the project's mixins jsons.
+
+Mixin environments can be overridden by annotating the mixin with `@MixinEnvironment`.
+You can set mixins to be registered automatically without MixinEnvironment by changing the `defaultMixinEnvironment` in the settings.
+
 ### Included Jars
 Exposes jars that were included in dependencies with Loom's `include` configuration.
 
@@ -39,6 +45,12 @@ fletchingTable {
     enableEntrypoints = true //default
     // Enables the entire annotation processor
     enableAnnotationProcessor = true //default
+    // Sets the default mixin environment to register mixins into
+    defaultMixinEnvironment = "none" //default, can be either "none", "auto", "client", "server"
+    // Sets the prefix required for mixin targets to set the "auto" environment to "client"
+    autoMixinEnvironmentClientPrefix = "net.minecraft.client"
+    // Sets the prefix required for mixin targets to set the "auto" environment to "server"
+    autoMixinEnvironmentClientPrefix = "null"
 }
 ```
 
@@ -53,7 +65,6 @@ plugins {
 ```
 
 ## Planned
- - Automatic Mixin registry (working on the dev commits, v1.2)
  - Kotlin support
  - Automatic interface injections registry
  - Making Yggdrasil shut up either with a login or by muting the exception
