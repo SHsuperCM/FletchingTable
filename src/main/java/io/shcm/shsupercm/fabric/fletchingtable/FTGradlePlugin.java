@@ -9,21 +9,15 @@ import io.shcm.shsupercm.fabric.fletchingtable.api.MixinEnvironment;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
-import org.gradle.api.artifacts.Configuration;
-import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
-import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.SourceSet;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.util.*;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 
 public class FTGradlePlugin implements Plugin<Project> {
     private FletchingTableExtension fletchingTableExtension;
@@ -237,109 +231,4 @@ public class FTGradlePlugin implements Plugin<Project> {
             }
     }
 
-    public static abstract class IncludedJarsExtension {
-        private final FletchingTableExtension fletchingTableExtension;
-        private final File includedJarsCache;
-        private final DependencyHandler dependencies;
-        private final Configuration configuration;
-
-        public IncludedJarsExtension(Project project, FletchingTableExtension fletchingTableExtension) {
-            this.fletchingTableExtension = fletchingTableExtension;
-            includedJarsCache = new File(project.getProjectDir(), ".gradle/fletchingtable/includedJarsCache");
-
-            project.getRepositories().flatDir(repository -> {
-                repository.dirs(includedJarsCache);
-                repository.content(content ->
-                        content.includeGroup("includedJars")
-                );
-            });
-
-            this.dependencies = project.getDependencies();
-            this.configuration = project.getConfigurations().create("includedJarsInternalConfiguration");
-            this.configuration.setTransitive(false);
-        }
-
-        public void from(String dependencyString) {
-            this.dependencies.add("includedJarsInternalConfiguration", dependencyString);
-        }
-
-        public void extractAll() {
-            if (includedJarsCache.exists()) {
-                for (File file : Objects.requireNonNull(includedJarsCache.listFiles()))
-                    if (file.isFile())
-                        file.delete();
-            } else
-                includedJarsCache.mkdirs();
-
-            if (fletchingTableExtension.getEnableIncludedJars().get())
-                for (File parentJarFile : this.configuration.resolve())
-                    try {
-                        try (ZipFile parentJarZip = new ZipFile(parentJarFile)) {
-                            ZipEntry modJsonEntry = parentJarZip.getEntry("fabric.mod.json");
-                            if (modJsonEntry != null) {
-                                JsonObject modJson = JsonParser.parseReader(new InputStreamReader(parentJarZip.getInputStream(modJsonEntry), StandardCharsets.UTF_8)).getAsJsonObject();
-                                JsonArray jars = modJson.getAsJsonArray("jars");
-                                if (jars != null)
-                                    for (JsonElement jar : jars) {
-                                        String jarPath = jar.getAsJsonObject().get("file").getAsString();
-                                        Files.copy(parentJarZip.getInputStream(parentJarZip.getEntry(jarPath)), includedJarsCache.toPath().resolve(jarPath.substring(jarPath.lastIndexOf('/') + 1)), StandardCopyOption.REPLACE_EXISTING);
-                                    }
-                            }
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-        }
-    }
-
-    public static abstract class FletchingTableExtension {
-        public abstract Property<Boolean> getEnableEntrypoints();
-        public abstract Property<Boolean> getEnableMixins();
-        public abstract Property<Boolean> getEnableIncludedJars();
-		
-        public abstract Property<Boolean> getEnableAnnotationProcessor();
-
-        public abstract Property<String> getDefaultMixinEnvironment();
-        public abstract Property<String> getAutoMixinEnvironmentClientPrefix();
-        public abstract Property<String> getAutoMixinEnvironmentServerPrefix();
-
-        public FletchingTableExtension() {
-            getEnableEntrypoints().convention(true);
-            getEnableMixins().convention(true);
-            getEnableIncludedJars().convention(true);
-
-            getEnableAnnotationProcessor().convention(true);
-			
-            getDefaultMixinEnvironment().convention("none");
-            getAutoMixinEnvironmentClientPrefix().convention("net.minecraft.client");
-            getAutoMixinEnvironmentServerPrefix().convention("null");
-        }
-
-        protected boolean writeAPSettings(File file) {
-            Properties settings = new Properties(), oldSettings = null;
-            file.getParentFile().mkdirs();
-            if (file.exists()) {
-                try (FileReader fr = new FileReader(file)) {
-                    (oldSettings = new Properties()).load(fr);
-                } catch (Exception ignored) {
-                    oldSettings = null;
-                }
-                file.delete();
-            }
-
-            settings.put("entrypoints", getEnableEntrypoints().get().toString());
-            settings.put("mixins", getEnableMixins().get().toString());
-            settings.put("mixins-default", getDefaultMixinEnvironment().get());
-            settings.put("mixins-prefix-client", getAutoMixinEnvironmentClientPrefix().get());
-            settings.put("mixins-prefix-server", getAutoMixinEnvironmentServerPrefix().get());
-
-            try (FileWriter fw = new FileWriter(file)) {
-                settings.store(fw, null);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            return !settings.equals(oldSettings);
-        }
-    }
 }
