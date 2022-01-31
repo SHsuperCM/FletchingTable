@@ -11,7 +11,7 @@ Simply annotate a static class, method or field with `@Entrypoint` and specify t
 Fletching Table will automatically process it and add it to existing entrypoints in `fabric.mod.json`.
 
 ### Mixins
-Automatically registers mixins into the project's mixins jsons.
+Automatically registers mixins into the project's mixin jsons.
 
 Mixin environments can be overridden by annotating the mixin with `@MixinEnvironment`.
 You can set mixins to be registered automatically without MixinEnvironment by changing the `defaultMixinEnvironment` in the settings.
@@ -43,14 +43,16 @@ fletchingTable {
     enableIncludedJars = true //default
     // Enables injecting processed entrypoint annotations to the mod json
     enableEntrypoints = true //default
+    // Enables injecting mixins to the mixin jsons
+    enableMixins = true //default
     // Enables the entire annotation processor
     enableAnnotationProcessor = true //default
     // Sets the default mixin environment to register mixins into
     defaultMixinEnvironment = "none" //default, can be either "none", "auto", "client", "server"
     // Sets the prefix required for mixin targets to set the "auto" environment to "client"
-    autoMixinEnvironmentClientPrefix = "net.minecraft.client"
+    autoMixinEnvironmentClientPrefix = "net.minecraft.client" //default
     // Sets the prefix required for mixin targets to set the "auto" environment to "server"
-    autoMixinEnvironmentClientPrefix = "null"
+    autoMixinEnvironmentClientPrefix = "null" //default
 }
 ```
 
