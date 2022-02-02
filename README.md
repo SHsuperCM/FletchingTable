@@ -52,7 +52,7 @@ fletchingTable {
     // Sets the prefix required for mixin targets to set the "auto" environment to "client"
     autoMixinEnvironmentClientPrefix = "net.minecraft.client" //default
     // Sets the prefix required for mixin targets to set the "auto" environment to "server"
-    autoMixinEnvironmentClientPrefix = "null" //default
+    autoMixinEnvironmentServerPrefix = "null" //default
 }
 ```
 
