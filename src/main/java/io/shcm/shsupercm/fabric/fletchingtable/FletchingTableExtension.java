@@ -1,5 +1,6 @@
 package io.shcm.shsupercm.fabric.fletchingtable;
 
+import org.gradle.api.Project;
 import org.gradle.api.provider.Property;
 
 import java.io.File;
@@ -9,11 +10,15 @@ import java.io.IOException;
 import java.util.Properties;
 
 public abstract class FletchingTableExtension {
+    private final Project project;
+
     public abstract Property<Boolean> getEnableEntrypoints();
 
     public abstract Property<Boolean> getEnableMixins();
 
     public abstract Property<Boolean> getEnableIncludedJars();
+
+    public abstract Property<Boolean> getEnableShutUpDrasil();
 
     public abstract Property<Boolean> getEnableAnnotationProcessor();
 
@@ -23,10 +28,12 @@ public abstract class FletchingTableExtension {
 
     public abstract Property<String> getAutoMixinEnvironmentServerPrefix();
 
-    public FletchingTableExtension() {
+    public FletchingTableExtension(Project project) {
+        this.project = project;
         getEnableEntrypoints().convention(true);
         getEnableMixins().convention(true);
         getEnableIncludedJars().convention(true);
+        getEnableShutUpDrasil().convention(true);
 
         getEnableAnnotationProcessor().convention(true);
 
@@ -60,5 +67,9 @@ public abstract class FletchingTableExtension {
         }
 
         return !settings.equals(oldSettings);
+    }
+
+    public void shutUpDrasil18() {
+        project.getDependencies().add("modRuntimeOnly", project.files(new File(project.getProjectDir(), ".gradle/fletchingtable/jars/fletchingtable-shutupdrasil-1.18.jar")));
     }
 }

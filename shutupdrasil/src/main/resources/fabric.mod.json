@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "shutupdrasil",
+  "version": "${version}",
+  "name": "Shut Up Drasil",
+  "description": "Mutes Yggdrasil's exception stacktrace",
+  "authors": [
+    "SHsuperCM"
+  ],
+  "contact": {
+    "website": "shsupercm.shcm.io",
+    "repo": "https://github.com/SHsuperCM/FletchingTable"
+  },
+  "license": "MIT",
+  "environment": "client",
+  "mixins": [
+    "shutupdrasil.mixins.json"
+  ],
+  "icon": "assets/shutupdrasil/icon.png",
+  "custom": {
+    "modmenu": {
+      "badges": [ "library" ],
+      "parent": {
+        "id": "fletchingtable",
+        "name": "Fletching Table",
+        "description": "Additions and automations for fabric-loom",
+        "badges": [ "library" ]
+      }
+    }
+  }
+}

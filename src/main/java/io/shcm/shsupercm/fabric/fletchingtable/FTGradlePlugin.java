@@ -22,10 +22,21 @@ import java.util.*;
 
 public class FTGradlePlugin implements Plugin<Project> {
     private FletchingTableExtension fletchingTableExtension;
+    private File jarsDir;
 
     @Override
     public void apply(Project project) {
-        fletchingTableExtension = project.getExtensions().create("fletchingTable", FletchingTableExtension.class);
+        fletchingTableExtension = project.getExtensions().create("fletchingTable", FletchingTableExtension.class, project);
+
+        jarsDir = new File(project.getProjectDir(), ".gradle/fletchingtable/jars");
+        jarsDir.mkdirs();
+        for (String name : new String[] { "api.jar", "shutupdrasil-1.18.jar" })
+            try (InputStream is = getClass().getClassLoader().getResourceAsStream("META-INF/jars/" + name)) {
+                Files.copy(Objects.requireNonNull(is), new File(jarsDir, "fletchingtable-" + name).toPath(), StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException | NullPointerException e) {
+                System.err.println("Could not extract FletchingTable dependency " + name + "!");
+                e.printStackTrace();
+            }
 
         project.afterEvaluate(this::afterEvaluate);
 
@@ -34,16 +45,6 @@ public class FTGradlePlugin implements Plugin<Project> {
 
     private void afterEvaluate(Project project) {
         FileCollection thisJar = project.files(getClass().getProtectionDomain().getCodeSource().getLocation());
-        //project.getDependencies().add(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME, thisJar);
-        File jarsDir = new File(project.getProjectDir(), ".gradle/fletchingtable/jars");
-        jarsDir.mkdirs();
-        for (String name : new String[] { "api.jar" })
-            try (InputStream is = getClass().getClassLoader().getResourceAsStream("META-INF/jars/" + name)) {
-                Files.copy(Objects.requireNonNull(is), new File(jarsDir, "fletchingtable-" + name).toPath(), StandardCopyOption.REPLACE_EXISTING);
-            } catch (IOException | NullPointerException e) {
-                System.err.println("Could not extract FletchingTable dependency " + name + "!");
-                e.printStackTrace();
-            }
 
         if (fletchingTableExtension.getEnableAnnotationProcessor().get()) {
             project.getDependencies().add(JavaPlugin.ANNOTATION_PROCESSOR_CONFIGURATION_NAME, thisJar);
