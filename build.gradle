@@ -27,8 +27,18 @@ dependencies {
     implementation group: 'org.spongepowered', name: 'mixin', version: '0.8.5'
 }
 
-jar {
+task apiJar(type: Jar) {
+    archiveName "api.jar"
+
+    from sourceSets.main.output
     from sourceSets.main.java.getSrcDirs()
+    include "io/shcm/shsupercm/fabric/fletchingtable/api/**"
+}
+
+jar {
+    into("META-INF/jars") {
+        from apiJar
+    }
 }
 
 pluginBundle {

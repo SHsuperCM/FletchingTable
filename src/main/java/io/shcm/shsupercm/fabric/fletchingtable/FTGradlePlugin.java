@@ -17,6 +17,7 @@ import org.gradle.api.tasks.SourceSet;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 
 public class FTGradlePlugin implements Plugin<Project> {
@@ -33,10 +34,20 @@ public class FTGradlePlugin implements Plugin<Project> {
 
     private void afterEvaluate(Project project) {
         FileCollection thisJar = project.files(getClass().getProtectionDomain().getCodeSource().getLocation());
-        project.getDependencies().add(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME, thisJar);
+        //project.getDependencies().add(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME, thisJar);
+        File jarsDir = new File(project.getProjectDir(), ".gradle/fletchingtable/jars");
+        jarsDir.mkdirs();
+        for (String name : new String[] { "api.jar" })
+            try (InputStream is = getClass().getClassLoader().getResourceAsStream("META-INF/jars/" + name)) {
+                Files.copy(Objects.requireNonNull(is), new File(jarsDir, "fletchingtable-" + name).toPath(), StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException | NullPointerException e) {
+                System.err.println("Could not extract FletchingTable dependency " + name + "!");
+                e.printStackTrace();
+            }
 
         if (fletchingTableExtension.getEnableAnnotationProcessor().get()) {
             project.getDependencies().add(JavaPlugin.ANNOTATION_PROCESSOR_CONFIGURATION_NAME, thisJar);
+            project.getDependencies().add(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME, project.files(new File(jarsDir, "fletchingtable-api.jar")));
 
             for (SourceSet sourceSet : project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets())
                 for (File resourcesDir : sourceSet.getResources().getSrcDirs()) {
