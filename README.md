@@ -67,9 +67,9 @@ plugins {
 ```
 
 ## Planned
- - Kotlin support
  - Automatic interface injections registry
  - Making Yggdrasil shut up either with a login or by muting the exception
+ - ~~Kotlin support~~(if I somehow find the time, kotlin is cursed af)
 
 ## About Fletching Table
 I originally suggested automatic entrypoints to loom but it was denied as it was out of scope. I was told it would make a good library and while I still believe Fabric should have automatic entrypoints by default, I agree that it needs to be a thing regardless.
