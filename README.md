@@ -51,7 +51,7 @@ dependencies {
 Fletching Table's default settings can be changed in an extension named `fletchingTable` as follows:
 ```groovy
 fletchingTable {
-    // Enables the entire annotation processor
+    // Enables the entire annotation processor and adds the annotation api to the project's classpath
     enableAnnotationProcessor = true //default
     // Enables injecting processed entrypoint annotations to the mod json
     enableEntrypoints = true //default
@@ -68,7 +68,7 @@ fletchingTable {
 
 
 ## Setup
-Add the plugin by applying it **after loom**.
+Add the plugin by applying it <ins>**after loom**</ins>.
 ```patch
 plugins {
     id 'fabric-loom' ...
@@ -76,9 +76,12 @@ plugins {
 }
 ```
 
+## Changelog
+Look at the [commits](https://github.com/SHsuperCM/FletchingTable/commits) for a changelog.
+
 ## Planned
  - Automatic interface injections registry
- - ~~Kotlin support~~(if I somehow find the time, kotlin is cursed af)
+ - ~~Kotlin support~~ (only if I somehow find the time, kotlin is cursed af)
 
 ## About Fletching Table
 I originally suggested automatic entrypoints to loom but it was denied as it was out of scope. I was told it would make a good library and while I still believe Fabric should have automatic entrypoints by default, I agree that it needs to be a thing regardless.
