@@ -48,9 +48,6 @@ public abstract class IncludedJarsExtension {
     }
 
     public void from(String dependencyString) {
-        if (!fletchingTableExtension.getEnableIncludedJars().get())
-            return;
-
         Configuration configuration = configurations.create("includedJarsInternalConfiguration");
         configuration.setTransitive(false);
 
