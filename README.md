@@ -72,7 +72,7 @@ Add the plugin by applying it <ins>**after loom**</ins>.
 ```patch
 plugins {
     id 'fabric-loom' ...
-+   id "io.shcm.shsupercm.fabric.fletchingtable" version "1.3"
++   id "io.shcm.shsupercm.fabric.fletchingtable" version "1.3.1"
 }
 ```
 
