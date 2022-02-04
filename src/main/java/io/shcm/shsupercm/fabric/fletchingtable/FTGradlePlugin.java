@@ -13,6 +13,7 @@ import org.gradle.api.file.FileCollection;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.compile.JavaCompile;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -56,10 +57,8 @@ public class FTGradlePlugin implements Plugin<Project> {
                     if (!jsonFile.exists())
                         continue;
 
-                    for (File generatedSourcesDir : sourceSet.getOutput().getGeneratedSourcesDirs())
-                        if (fletchingTableExtension.writeAPSettings(new File(generatedSourcesDir, "fletchingtable/ap.properties")))
-                            for (Task classes : project.getTasksByName("compileJava", false))
-                                classes.getOutputs().upToDateWhen(task -> false);
+                    for (Task javaCompile : project.getTasksByName("compileJava", false))
+                        fletchingTableExtension.writeAPSettings((JavaCompile) javaCompile);
                 }
 
 

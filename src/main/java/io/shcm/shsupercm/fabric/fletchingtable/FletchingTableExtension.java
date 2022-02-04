@@ -2,12 +2,10 @@ package io.shcm.shsupercm.fabric.fletchingtable;
 
 import org.gradle.api.Project;
 import org.gradle.api.provider.Property;
+import org.gradle.api.tasks.compile.JavaCompile;
 
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.Properties;
+import java.util.List;
 
 /**
  * Settings for Fletching Table
@@ -58,31 +56,14 @@ public abstract class FletchingTableExtension {
         getAutoMixinEnvironmentServerPrefix().convention("null");
     }
 
-    protected boolean writeAPSettings(File file) {
-        Properties settings = new Properties(), oldSettings = new Properties();
-        file.getParentFile().mkdirs();
-        if (file.exists()) {
-            try (FileReader fr = new FileReader(file)) {
-                oldSettings.load(fr);
-            } catch (Exception ignored) {
-                oldSettings = null;
-            }
-            file.delete();
-        }
+    protected void writeAPSettings(JavaCompile compileTask) {
+        List<String> compilerArgs = compileTask.getOptions().getCompilerArgs();
 
-        settings.put("entrypoints", getEnableEntrypoints().get().toString());
-        settings.put("mixins", getEnableMixins().get().toString());
-        settings.put("mixins-default", getDefaultMixinEnvironment().get());
-        settings.put("mixins-prefix-client", getAutoMixinEnvironmentClientPrefix().get());
-        settings.put("mixins-prefix-server", getAutoMixinEnvironmentServerPrefix().get());
-
-        try (FileWriter fw = new FileWriter(file)) {
-            settings.store(fw, null);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return !settings.equals(oldSettings);
+        compilerArgs.add("-Afletchingtable.entrypoints=" + getEnableEntrypoints().get());
+        compilerArgs.add("-Afletchingtable.mixins=" + getEnableMixins().get());
+        compilerArgs.add("-Afletchingtable.mixins.default=" + getDefaultMixinEnvironment().get());
+        compilerArgs.add("-Afletchingtable.mixins.prefix.client=" + getAutoMixinEnvironmentClientPrefix().get());
+        compilerArgs.add("-Afletchingtable.mixins.prefix.server=" + getAutoMixinEnvironmentServerPrefix().get());
     }
 
     /**

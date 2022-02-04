@@ -14,11 +14,9 @@ import javax.tools.Diagnostic;
 import javax.tools.FileObject;
 import javax.tools.StandardLocation;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.Writer;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Properties;
 import java.util.Set;
 
 public class FTAnnotationProcessor extends AbstractProcessor {
@@ -29,28 +27,23 @@ public class FTAnnotationProcessor extends AbstractProcessor {
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
         try {
-            Properties settings = new Properties();
-            try (InputStream is = processingEnv.getFiler().getResource(StandardLocation.SOURCE_OUTPUT, "fletchingtable", "ap.properties").openInputStream()) {
-                settings.load(is);
-            }
-
             FileObject file;
-            if (settings.getProperty("entrypoints", "true").equalsIgnoreCase("true")) {
+            if (processingEnv.getOptions().get("fletchingtable.entrypoints").equalsIgnoreCase("true")) {
                 file = processingEnv.getFiler().createResource(StandardLocation.SOURCE_OUTPUT, "fletchingtable", "entrypoints.txt");
                 file.delete();
                 writerEntrypoints = file.openWriter();
             }
-            if (settings.getProperty("mixins", "true").equalsIgnoreCase("true")) {
+            if (processingEnv.getOptions().get("fletchingtable.mixins").equalsIgnoreCase("true")) {
                 file = processingEnv.getFiler().createResource(StandardLocation.SOURCE_OUTPUT, "fletchingtable", "mixins.txt");
                 file.delete();
                 writerMixins = file.openWriter();
 
-                defaultMixinEnvironment = settings.getProperty("mixins-default", "none");
+                defaultMixinEnvironment = processingEnv.getOptions().get("fletchingtable.mixins.default");
 
-                autoMixinClientPrefix = settings.getProperty("mixins-prefix-client", "null");
+                autoMixinClientPrefix = processingEnv.getOptions().get("fletchingtable.mixins.prefix.client");
                 if (autoMixinClientPrefix.equals("null"))
                     autoMixinClientPrefix = null;
-                autoMixinServerPrefix = settings.getProperty("mixins-prefix-server", "null");
+                autoMixinServerPrefix = processingEnv.getOptions().get("fletchingtable.mixins.prefix.server");
                 if (autoMixinServerPrefix.equals("null"))
                     autoMixinServerPrefix = null;
             }
@@ -77,6 +70,19 @@ public class FTAnnotationProcessor extends AbstractProcessor {
             types.add("org.spongepowered.asm.mixin.Mixin");
 
         return types;
+    }
+
+    @Override
+    public Set<String> getSupportedOptions() {
+        HashSet<String> options = new HashSet<>();
+
+        options.add("fletchingtable.entrypoints");
+        options.add("fletchingtable.mixins");
+        options.add("fletchingtable.mixins.default");
+        options.add("fletchingtable.mixins.prefix.client");
+        options.add("fletchingtable.mixins.prefix.server");
+
+        return options;
     }
 
     @SuppressWarnings("deprecation")
