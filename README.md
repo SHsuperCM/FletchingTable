@@ -20,7 +20,7 @@ You can set mixins to be registered automatically without MixinEnvironment by ch
 Exposes jars that were included in dependencies with Loom's `include` configuration.
 
 To use, first add an `includedJars` closure in your dependencies. 
-Add parent dependencies to extract from using the `from` configuration, at the end call `extractAll()`.
+Add parent dependencies to extract from using the `from` configuration.
 Then, use extracted jars in other configurations by setting the group to `includedJars` and the name to the name of the extracted jar(without the `.jar` extension).
 
 As an example, here's how to add Pride Lib inside Lambdynamic Lights from the modrinth maven to the modCompileOnly configuration:
@@ -29,26 +29,36 @@ dependencies {
     ..
     includedJars {
         from "maven.modrinth:lambdynamiclights:2.1.0+1.17"
-        extractAll()
     }
     modCompileOnly "includedJars:pridelib-1.1.0+1.17"
 }
 ```
 
+### Shut Up Drasil
+Mutes the stacktrace from the authentication exception while in the development environment.
+
+To use, add `fletchingTable.shutUpDrasil18()` in the dependencies block.
+```groovy
+dependencies {
+    ..
+    fletchingTable.shutUpDrasil18()
+}
+```
+
+**Note**: Shut Up Drasil was only tested with 1.18, it might work on other versions and it might not, better support is planned eventually.
+
 ### Settings
 Fletching Table's default settings can be changed in an extension named `fletchingTable` as follows:
 ```groovy
 fletchingTable {
-    // Enables the included jars extraction process
-    enableIncludedJars = true //default
+    // Enables the entire annotation processor
+    enableAnnotationProcessor = true //default
     // Enables injecting processed entrypoint annotations to the mod json
     enableEntrypoints = true //default
     // Enables injecting mixins to the mixin jsons
     enableMixins = true //default
-    // Enables the entire annotation processor
-    enableAnnotationProcessor = true //default
     // Sets the default mixin environment to register mixins into
-    defaultMixinEnvironment = "none" //default, can be either "none", "auto", "client", "server"
+    defaultMixinEnvironment = "none" //default, can be either "none", "auto", "mixins", "client", "server"
     // Sets the prefix required for mixin targets to set the "auto" environment to "client"
     autoMixinEnvironmentClientPrefix = "net.minecraft.client" //default
     // Sets the prefix required for mixin targets to set the "auto" environment to "server"
@@ -62,13 +72,12 @@ Add the plugin by applying it **after loom**.
 ```patch
 plugins {
     id 'fabric-loom' ...
-+   id "io.shcm.shsupercm.fabric.fletchingtable" version "1.2"
++   id "io.shcm.shsupercm.fabric.fletchingtable" version "1.3"
 }
 ```
 
 ## Planned
  - Automatic interface injections registry
- - Making Yggdrasil shut up either with a login or by muting the exception
  - ~~Kotlin support~~(if I somehow find the time, kotlin is cursed af)
 
 ## About Fletching Table
