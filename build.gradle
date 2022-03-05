@@ -9,7 +9,7 @@ repositories {
     maven { url = "https://repo.spongepowered.org/maven/" }
 }
 
-version = '1.4'
+version = '1.4.1'
 group = 'io.shcm.shsupercm.fabric'
 
 gradlePlugin {
